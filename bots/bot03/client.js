@@ -42,6 +42,8 @@ let epLimit = -1;
 let config = 1;
 let episode_timer = null;
 let pending_attack = null;
+const attacked_targets = new Map();
+const combat_events = [];
 
 for (const arg of args) {
   if (arg === "instant-run") {
@@ -150,6 +152,8 @@ function setSlot() {
 
 function spawn() {
     killed_ids.clear()
+    attacked_targets.clear();
+    combat_events.length = 0;
 
     pending_attack = null;
     clear_episode_timer();
@@ -309,6 +313,9 @@ function perform_action(action) {
             const health = get_zombie_health(target);
             if (health !== null && health > 0) {
                 pending_attack = { target, health };
+                if (!attacked_targets.has(target.id)) {
+                    attacked_targets.set(target.id, { health, killed: false });
+                }
             }
             bot.attack(target);
         } else {
@@ -354,6 +361,7 @@ function get_state() {
         attack_hit: pending_attack !== null && attacked_health !== null &&
             attacked_health < pending_attack.health,
         target_killed: pending_attack !== null && killed_ids.has(pending_attack.target.id),
+        combat_events: combat_events.splice(0),
     };
 }
 
@@ -362,7 +370,27 @@ function vector_to_tuple(vector) {
 }
 
 const killed_ids = new Set();
-bot.on("entityDead", e => { if (e.name === "zombie") killed_ids.add(e.id); });
+bot.on("entityUpdate", entity => record_combat_update(entity));
+bot.on("entityDead", entity => {
+    if (entity.name === "zombie") {
+        killed_ids.add(entity.id);
+        record_combat_update(entity, true);
+    }
+});
+
+function record_combat_update(entity, died = false) {
+    const tracked = attacked_targets.get(entity.id);
+    if (!tracked || tracked.killed) return;
+    const health = died ? 0 : get_zombie_health(entity);
+    if (health === null) return;
+    const damage = Math.max(0, tracked.health - health);
+    const killed = died || health <= 0;
+    tracked.health = health;
+    tracked.killed = killed;
+    if (damage > 0 || killed) {
+        combat_events.push({ target_id: entity.id, damage, killed });
+    }
+}
 
 function get_nearest_zombie() {
     return bot.nearestEntity(e => {

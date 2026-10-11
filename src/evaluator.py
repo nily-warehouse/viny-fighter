@@ -1,13 +1,14 @@
 from __future__ import annotations
 
 import asyncio
+import math
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Callable
 
 from .config import SERVER_SLOTS, HarnessConfig
-from .configs import reward_module
-from .fitness import FitnessReport, evaluate_fitness
+from .configs import fitness_module
+from .fitness_report import FitnessReport
 from .transitions import clear_transition_file, consume_transition_file
 
 
@@ -27,6 +28,15 @@ class EvaluationResult:
     output_tail: str
     elapsed_seconds: float = 0.0
 
+    @property
+    def failed(self) -> bool:
+        return (
+            self.return_code != 0
+            or self.report.transitions == 0
+            or self.report.error is not None
+            or not math.isfinite(self.report.fitness)
+        )
+
 
 EvaluationCallback = Callable[[EvaluationResult, int, int], None]
 
@@ -38,7 +48,8 @@ class HarnessEvaluator:
         if harness.episodes < 1:
             raise ValueError("episodes must be at least 1")
         self.harness = harness
-        self.reward_config = reward_module(harness.config_id).RewardConfig()
+        self.fitness_module = fitness_module(harness.config_id)
+        self.reward_config = self.fitness_module.RewardConfig()
 
     async def evaluate_one(self, job: EvaluationJob, slot: int) -> EvaluationResult:
         started_at = time.monotonic()
@@ -79,14 +90,17 @@ class HarnessEvaluator:
             raise
         
         finally:
-            transitions, _ = consume_transition_file(transition_path)
+            transitions, invalid = consume_transition_file(transition_path)
 
-        report = evaluate_fitness(
+        report = self.fitness_module.evaluate_fitness(
             transitions,
             expected_episodes=self.harness.episodes,
             config=self.reward_config,
-            config_id=self.harness.config_id,
         )
+        if invalid:
+            report = replace(report, error=f"{invalid} invalid transition records")
+        if timed_out:
+            report = replace(report, error="evaluation process timed out")
         text = output.decode("utf-8", errors="replace")
         return EvaluationResult(
             index=job.index,

@@ -1,33 +1,24 @@
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass
 from typing import Any, Iterable
 
-from .configs import reward_module
+from ...fitness_report import FitnessReport
+from . import reward as rewards
 
-RewardConfig = reward_module().RewardConfig
+RewardConfig = rewards.RewardConfig
 
 NO_DATA_FITNESS = 0
-
-
-@dataclass(frozen=True)
-class FitnessReport:
-    fitness: float
-    transitions: int
-    inferred_kills: int
 
 
 def evaluate_fitness(
     transitions: Iterable[dict[str, Any]],
     expected_episodes: int = 1,
     config: RewardConfig | None = None,
-    config_id: int = 1,
 ) -> FitnessReport:
     if expected_episodes < 1:
         raise ValueError("expected_episodes must be at least 1")
 
-    rewards = reward_module(config_id)
     rules = config or rewards.RewardConfig()
     best: dict[Any, float] = {}
     total = 0.0

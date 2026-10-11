@@ -1,0 +1,17 @@
+{
+  "attack_action": "attack",
+  "outputs": [
+    {"name": "noop",           "enabled":  true,  "category": "none",     "description": ""},
+    {"name": "forward",        "enabled": false,  "category": "movement", "description": ""},
+    {"name": "back",           "enabled": false,  "category": "movement", "description": ""},
+    {"name": "left",           "enabled": false,  "category": "movement", "description": ""},
+    {"name": "right",          "enabled": false,  "category": "movement", "description": ""},
+    {"name": "jump",           "enabled": false,  "category": "movement", "description": ""},
+    {"name": "sprint_forward", "enabled": false,  "category": "movement", "description": ""},
+    {"name": "turn_left",      "enabled":  true,  "category": "aim",      "description": ""},
+    {"name": "turn_right",     "enabled":  true,  "category": "aim",      "description": ""},
+    {"name": "look_up",        "enabled": false,  "category": "aim",      "description": ""},
+    {"name": "look_down",      "enabled": false,  "category": "aim",      "description": ""},
+    {"name": "attack",         "enabled":  true,  "category": "combat",   "description": ""}
+  ]
+}

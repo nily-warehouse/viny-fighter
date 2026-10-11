@@ -193,12 +193,11 @@ class Trainer:
         results = asyncio.run(
             self.evaluator.evaluate(names, on_result=self._on_evaluation)
         )
-        if all(
-            result.return_code != 0 or result.report.transitions == 0
-            for result in results
-        ):
+        failures = [result for result in results if result.failed]
+        if failures:
+            names = ", ".join(result.model_name for result in failures[:3])
             raise RuntimeError(
-                "all evaluations failed or produced no transitions; "
+                f"{len(failures)} evaluations failed or produced invalid data ({names}); "
                 "the generation was not advanced"
             )
 
@@ -216,10 +215,7 @@ class Trainer:
             species=len(self.population.species.species),
             transitions=sum(result.report.transitions for result in results),
             inferred_kills=sum(result.report.inferred_kills for result in results),
-            failed_evaluations=sum(
-                result.return_code != 0 or result.report.transitions == 0
-                for result in results
-            ),
+            failed_evaluations=sum(result.failed for result in results),
             best_model=names[champion_index],
         )
         self.export_population(ordered)

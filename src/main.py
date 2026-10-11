@@ -188,20 +188,23 @@ class TrainingConsole:
         completed: int,
         total: int,
     ) -> None:
-        succeeded = result.return_code == 0 and result.report.transitions > 0
+        succeeded = not result.failed
         symbol = self._style(
             "✓" if succeeded else "!",
             "green" if succeeded else "red",
         )
         progress = self._style(f"[{completed:>{len(str(total))}}/{total}]", "dim")
+        score = f"{result.report.fitness:.3f}" if succeeded else "invalid"
         details = (
-            f"fitness {result.report.fitness:8.3f}  "
+            f"fitness {score:>8}  "
             f"steps {result.report.transitions:5d}  "
             f"kills {result.report.inferred_kills:2d}  "
             f"slot {result.slot:2d}  {_duration(result.elapsed_seconds):>7}"
         )
         self._write(f"  {progress} {symbol} {result.model_name:<20} {details}")
 
+        if result.report.error:
+            self._write(self._style(f"          │ {result.report.error}", "red"))
         if not succeeded and result.output_tail.strip():
             tail = result.output_tail.strip().splitlines()[-3:]
             for line in tail:
